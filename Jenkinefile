@@ -1,0 +1,39 @@
+pipeline {
+    agent {label "rai"}
+
+    stages {
+        stage('Code') {
+            steps {
+                echo 'The code is cloning in this stage'
+                git url:"https://github.com/Rai544/django-todo-app.git", branch: "main"
+            }
+        }
+        stage('login, taging, and pushing') {
+            steps {
+                echo 'This is loging the docker'
+                withCredentials([usernamePassword('credentialsId':"dockerHubCred", passwordVariable:"dockerHubPass", usernameVariable:"dockerHubUser")]){
+                sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
+                echo "docker login successfully"
+                echo "Build docker image"
+                sh "docker build -t django-todo-app:latest ."
+                sh "docker tag django-todo-app:latest ${env.dockerHubUser}/django-todo-app:latest"
+                echo "image is taged"
+                sh "docker push ${env.dockerHubUser}/django-todo-app:latest"
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'In this stage, test will be performed'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'in this stage, we will deploy over project'
+                sh "docker compose down"
+                echo "container is down"
+                sh "docker compose up -d"
+            }
+        }
+    }
+}
